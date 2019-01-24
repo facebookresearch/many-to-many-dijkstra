@@ -37,7 +37,7 @@ def seek(
     Find the shortest paths between *any* origin and *each* target.
 
     Pathfinder is a modified version of Dijkstra's algorithm
-    (https://fburl.com/is86jvbn) for finding
+    (https://en.wikipedia.org/wiki/Dijkstra's_algorithm) for finding
     the shortest distance between two points in a graph. It differs in
     a few important ways:
 
@@ -59,7 +59,7 @@ def seek(
         be removed, once paths to them are found and origins may be
         augmented (see path_handling param below).
         If targets is not supplied, no targets are assumed and a targets
-        array of all zeros is created. This is when calculating minimum
+        array of all zeros is created. This is useful for calculating minimum
         distances from a set of origins to all points of the grid.
     @param weights: 2D numpy array of floats
         The cost of visiting a grid square, zero or greater.
@@ -72,20 +72,20 @@ def seek(
         Determines how to handle paths between target and origins,
         once they are found.
 
-        * 'link' or 'l'  adds the target to the origins, as well as the path
-            connecting them
-        * 'assimilate' or 'a' adds the target to the origins, but does not
-            add the path.
-        * 'none' or 'n' doesn't add anything to the origins.
+        * 'link' or 'l'  adds a target to the origins once it is found,
+            as well as the path connecting them. This mode
+            is good for growing a network by connecting nodes, as we do here
+            when planning or estimating an electrical grid.
+        * 'assimilate' or 'a' adds a target to the origins once it is found,
+            but does not add the path connecting them. This mode
+            is good for growing a network by adding nodes that
+            have no physical connection between them, as in planning an
+            ad-hoc wireless network.
+        * 'none' or 'n' doesn't add a target to the to the origins
+            once it is found. This mode is good for finding a path
+            from a backbone or trunk to many leaf nodes,
+            as in planning fiber backhaul routing.
 
-        These options allow for a variety of use cases.
-        'link' is good for growing a network by connecting nodes,
-        as in planning an electrical grid.
-        'assimilate' is good for growing a network by adding nodes that
-        have no physical connection between them, as in planning an
-        ad-hoc wireless network.
-        'none' is good for finding a path from a backbone or trunk
-        to many leaf nodes, as in planning fiber backhaul routing.
     @param debug: boolean
         If True, provide text updates on the algorithm's progress.
     @param film: boolean
@@ -93,11 +93,11 @@ def seek(
 
     @retun results: dict
         'paths': 2D numpy array of ints
-            One, where paths have been found, and zero everywhere else.
+            1 where paths have been found, and 0 everywhere else.
         'distance: 2D numpy array of floats
             The length of the shortest path (the sum of the weights of grid
             cells traversed) from the nearest origin point to every point
-            on the grid. Origin points have a distance of zero and it
+            on the grid. Origin points have a distance of zero, and it
             goes up from there the further away you get.
         'rendering': 2D numpy array of floats
             An image representing the final state of the algorithm, including
@@ -372,7 +372,9 @@ def nb_loop(
     weights,
 ):
     """
-
+    This is the meat of the computation.
+    Pull the computationally expensive operations from seek()
+    out into their own function that can be pre-compiled using numba.
     """
     # Calculate the distance for each of the 8 neighbors.
     neighbors = [

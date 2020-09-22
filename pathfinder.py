@@ -19,19 +19,15 @@ import sys
 import time
 
 import matplotlib
-matplotlib.use('Agg')
+
+matplotlib.use("Agg")
 import matplotlib.pyplot as plt
 from numba import autojit
 import numpy as np
 
 
 def seek(
-    origins,
-    targets=None,
-    weights=None,
-    path_handling='link',
-    debug=False,
-    film=False,
+    origins, targets=None, weights=None, path_handling="link", debug=False, film=False
 ):
     """
     Find the shortest paths between *any* origin and *each* target.
@@ -110,22 +106,22 @@ def seek(
     assert targets.shape == origins.shape
     assert targets.shape == weights.shape
     path_handling = path_handling.lower()
-    assert path_handling in ['none', 'n', 'assimilate', 'a', 'link', 'l']
+    assert path_handling in ["none", "n", "assimilate", "a", "link", "l"]
     n_rows, n_cols = origins.shape
-    if path_handling[0] == 'n':
+    if path_handling[0] == "n":
         path_handling = 0
-    if path_handling[0] == 'a':
+    if path_handling[0] == "a":
         path_handling = 1
-    if path_handling[0] == 'l':
+    if path_handling[0] == "l":
         path_handling = 2
 
     iteration = 0
-    not_visited = 9999999999.
+    not_visited = 9999999999.0
 
     if film:
         frame_rate = int(1e4)
         frame_counter = 100000
-        frame_dirname = 'frames'
+        frame_dirname = "frames"
         try:
             os.mkdir(frame_dirname)
         except Exception:
@@ -135,15 +131,15 @@ def seek(
         cwd = os.getcwd()
         try:
             os.chdir(frame_dirname)
-            for filename in os.listdir('.'):
+            for filename in os.listdir("."):
                 os.remove(filename)
         except Exception:
-            print('Frame deletion failed')
+            print("Frame deletion failed")
         finally:
             os.chdir(cwd)
 
-    rendering = 1. / (2. * weights)
-    rendering = np.minimum(rendering, 1.)
+    rendering = 1.0 / (2.0 * weights)
+    rendering = np.minimum(rendering, 1.0)
     target_locations = np.where(targets)
     n_targets = target_locations[0].size
     n_targets_remaining = n_targets
@@ -151,17 +147,13 @@ def seek(
     for i_target, row in enumerate(target_locations[0]):
         col = target_locations[1][i_target]
         wid = 8
-        rendering[
-            row - wid:
-            row + wid + 1,
-            col - wid:
-            col + wid + 1] = .5
+        rendering[row - wid : row + wid + 1, col - wid : col + wid + 1] = 0.5
 
     # The distance array shows the shortest weighted distance from
     # each point in the grid to the nearest origin point.
     distance = np.ones((n_rows, n_cols)) * not_visited
     origin_locations = np.where(origins != 0)
-    distance[origin_locations] = 0.
+    distance[origin_locations] = 0.0
 
     # The paths array shows each of the paths that are discovered
     # from targets to their nearest origin point.
@@ -175,7 +167,7 @@ def seek(
     halo = []
     for i, origin_row in enumerate(origin_locations[0]):
         origin_col = origin_locations[1][i]
-        heapq.heappush(halo, (0., (origin_row, origin_col)))
+        heapq.heappush(halo, (0.0, (origin_row, origin_col)))
 
     # The temporary array for tracking locations to add to the halo.
     # This gets overwritten with each iteration.
@@ -185,29 +177,29 @@ def seek(
     while len(halo) > 0:
         iteration += 1
         if debug:
-            if (n_targets_remaining > n_targets_remaining_update or
-                    iteration % 1e4 == 0.):
+            if (
+                n_targets_remaining > n_targets_remaining_update
+                or iteration % 1e4 == 0.0
+            ):
                 n_targets_remaining = n_targets_remaining_update
-                print('\r {num} targets of {total} reached, {rem} remaining, {halo_len} to try '
-                      .format(
-                          num=n_targets - n_targets_remaining,
-                          total=n_targets,
-                          rem=n_targets_remaining,
-                          halo_len=len(halo),
-                      ), end='')
+                print(
+                    "\r {num} targets of {total} reached, {rem} remaining, {halo_len} to try ".format(
+                        num=n_targets - n_targets_remaining,
+                        total=n_targets,
+                        rem=n_targets_remaining,
+                        halo_len=len(halo),
+                    ),
+                    end="",
+                )
                 sys.stdout.flush()
         if film:
             if iteration % frame_rate == 0:
                 frame_counter = render(
-                    distance,
-                    frame_counter,
-                    frame_dirname,
-                    not_visited,
-                    rendering,
+                    distance, frame_counter, frame_dirname, not_visited, rendering
                 )
 
         # Reinitialize locations to add.
-        new_locs[:n_new_locs, :] = 0.
+        new_locs[:n_new_locs, :] = 0.0
         n_new_locs = 0
 
         # Retrieve and check the location with shortest distance.
@@ -234,42 +226,36 @@ def seek(
             heapq.heappush(halo, (new_locs[i_loc, 0], loc))
 
     if debug:
-        print('\r                                                 ', end='')
+        print("\r                                                 ", end="")
         sys.stdout.flush()
-        print('')
+        print("")
     # Add the newfound paths to the visualization.
-    rendering = 1. / (1. + distance / 10.)
-    rendering[np.where(origins)] = 1.
-    rendering[np.where(paths)] = .8
-    results = {'paths': paths, 'distance': distance, 'rendering': rendering}
+    rendering = 1.0 / (1.0 + distance / 10.0)
+    rendering[np.where(origins)] = 1.0
+    rendering[np.where(paths)] = 0.8
+    results = {"paths": paths, "distance": distance, "rendering": rendering}
     return results
 
 
-def render(
-    distance,
-    frame_counter,
-    frame_dirname,
-    not_visited,
-    rendering,
-):
+def render(distance, frame_counter, frame_dirname, not_visited, rendering):
     """
     Turn the progress of the algorithm into a pretty picture.
     """
     progress = rendering.copy()
     visited_locs = np.where(distance < not_visited)
-    progress[visited_locs] = 1. / (1. + distance[visited_locs] / 10.)
-    filename = 'pathfinder_frame_' + str(frame_counter) + '.png'
-    cmap = 'inferno'
+    progress[visited_locs] = 1.0 / (1.0 + distance[visited_locs] / 10.0)
+    filename = "pathfinder_frame_" + str(frame_counter) + ".png"
+    cmap = "inferno"
     dpi = 1200
     plt.figure(33374)
     plt.clf()
     plt.imshow(
         progress,
-        origin='higher',
-        interpolation='nearest',
+        origin="higher",
+        interpolation="nearest",
         cmap=plt.get_cmap(cmap),
-        vmax=1.,
-        vmin=0.,
+        vmax=1.0,
+        vmin=0.0,
     )
     filename_full = os.path.join(frame_dirname, filename)
     plt.savefig(filename_full, dpi=dpi)
@@ -297,19 +283,19 @@ def nb_trace_back(
     path = []
     distance_remaining = distance[target]
     current_location = target
-    while distance_remaining > 0.:
+    while distance_remaining > 0.0:
         path.append(current_location)
         (row_here, col_here) = current_location
         # Check each of the neighbors for the lowest distance to grid.
         neighbors = [
-            ((row_here - 1, col_here), 1.),
-            ((row_here + 1, col_here), 1.),
-            ((row_here, col_here + 1), 1.),
-            ((row_here, col_here - 1), 1.),
-            ((row_here - 1, col_here - 1), 2.**.5),
-            ((row_here + 1, col_here - 1), 2.**.5),
-            ((row_here - 1, col_here + 1), 2.**.5),
-            ((row_here + 1, col_here + 1), 2.**.5),
+            ((row_here - 1, col_here), 1.0),
+            ((row_here + 1, col_here), 1.0),
+            ((row_here, col_here + 1), 1.0),
+            ((row_here, col_here - 1), 1.0),
+            ((row_here - 1, col_here - 1), 2.0 ** 0.5),
+            ((row_here + 1, col_here - 1), 2.0 ** 0.5),
+            ((row_here - 1, col_here + 1), 2.0 ** 0.5),
+            ((row_here + 1, col_here + 1), 2.0 ** 0.5),
         ]
         lowest_distance = not_visited
         # It's confusing, but keep in mind that
@@ -321,15 +307,14 @@ def nb_trace_back(
         for (neighbor, scale) in neighbors:
             if neighbor not in path:
                 distance_from_neighbor = scale * weights[current_location]
-                neighbor_distance = (distance[neighbor] +
-                                     distance_from_neighbor)
+                neighbor_distance = distance[neighbor] + distance_from_neighbor
                 if neighbor_distance < lowest_distance:
                     lowest_distance = neighbor_distance
                     best_neighbor = neighbor
 
         # This will fail if caught in a local minimum.
         if distance_remaining < distance[best_neighbor]:
-            distance_remaining = 0.
+            distance_remaining = 0.0
             continue
 
         distance_remaining = distance[best_neighbor]
@@ -341,11 +326,10 @@ def nb_trace_back(
         # If paths are to be linked, include the entire paths as origins and
         # add them to new_locs. If targets are to be assimilated, just add
         # the target (the first point on the path) to origins and new_locs.
-        if path_handling == 2 or (
-                path_handling == 1 and i_loc == 0):
+        if path_handling == 2 or (path_handling == 1 and i_loc == 0):
             origins[loc] = 1
-            distance[loc] = 0.
-            new_locs[n_new_locs, 0] = 0.
+            distance[loc] = 0.0
+            new_locs[n_new_locs, 0] = 0.0
             new_locs[n_new_locs, 1] = loc[0]
             new_locs[n_new_locs, 2] = loc[1]
             n_new_locs += 1
@@ -378,14 +362,14 @@ def nb_loop(
     """
     # Calculate the distance for each of the 8 neighbors.
     neighbors = [
-        ((row_here - 1, col_here), 1.),
-        ((row_here + 1, col_here), 1.),
-        ((row_here, col_here + 1), 1.),
-        ((row_here, col_here - 1), 1.),
-        ((row_here - 1, col_here - 1), 2.**.5),
-        ((row_here + 1, col_here - 1), 2.**.5),
-        ((row_here - 1, col_here + 1), 2.**.5),
-        ((row_here + 1, col_here + 1), 2.**.5),
+        ((row_here - 1, col_here), 1.0),
+        ((row_here + 1, col_here), 1.0),
+        ((row_here, col_here + 1), 1.0),
+        ((row_here, col_here - 1), 1.0),
+        ((row_here - 1, col_here - 1), 2.0 ** 0.5),
+        ((row_here + 1, col_here - 1), 2.0 ** 0.5),
+        ((row_here - 1, col_here + 1), 2.0 ** 0.5),
+        ((row_here + 1, col_here + 1), 2.0 ** 0.5),
     ]
 
     for (neighbor, scale) in neighbors:
@@ -409,10 +393,12 @@ def nb_loop(
                 n_targets_remaining -= 1
         if neighbor_distance < distance[neighbor]:
             distance[neighbor] = neighbor_distance
-            if (neighbor[0] > 0 and
-                    neighbor[0] < n_rows - 1 and
-                    neighbor[1] > 0 and
-                    neighbor[1] < n_cols - 1):
+            if (
+                neighbor[0] > 0
+                and neighbor[0] < n_rows - 1
+                and neighbor[1] > 0
+                and neighbor[1] < n_cols - 1
+            ):
                 new_locs[n_new_locs, 0] = distance[neighbor]
                 new_locs[n_new_locs, 1] = neighbor[0]
                 new_locs[n_new_locs, 2] = neighbor[1]

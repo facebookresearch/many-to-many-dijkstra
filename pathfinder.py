@@ -4,15 +4,15 @@ Copyright (c) Facebook, Inc. and its affiliates.
 This source code is licensed under the MIT license found in the
 LICENSE file in the root directory of this source tree.
 """
-
-"""
-The pathfinder algorithm.
-"""
 from __future__ import absolute_import
 from __future__ import division
 from __future__ import print_function
 from __future__ import unicode_literals
 from __future__ import with_statement
+
+"""
+The pathfinder algorithm.
+"""
 import heapq
 import os
 import sys
@@ -305,12 +305,16 @@ def nb_trace_back(
         # the neighbor position to the grid. It is distance[neighbor]
         # plus the distance to the neighbor from the current position.
         for (neighbor, scale) in neighbors:
-            if neighbor not in path:
-                distance_from_neighbor = scale * weights[current_location]
-                neighbor_distance = distance[neighbor] + distance_from_neighbor
-                if neighbor_distance < lowest_distance:
-                    lowest_distance = neighbor_distance
-                    best_neighbor = neighbor
+            if (
+                0 <= neighbor[0] < weights.shape[0]
+                and 0 <= neighbor[1] < weights.shape[1]
+            ):
+                if neighbor not in path:
+                    distance_from_neighbor = scale * weights[current_location]
+                    neighbor_distance = distance[neighbor] + distance_from_neighbor
+                    if neighbor_distance < lowest_distance:
+                        lowest_distance = neighbor_distance
+                        best_neighbor = neighbor
 
         # This will fail if caught in a local minimum.
         if distance_remaining < distance[best_neighbor]:
@@ -333,7 +337,6 @@ def nb_trace_back(
             new_locs[n_new_locs, 1] = loc[0]
             new_locs[n_new_locs, 2] = loc[1]
             n_new_locs += 1
-
     return n_new_locs
 
 
@@ -371,34 +374,27 @@ def nb_loop(
         ((row_here - 1, col_here + 1), 2.0 ** 0.5),
         ((row_here + 1, col_here + 1), 2.0 ** 0.5),
     ]
-
     for (neighbor, scale) in neighbors:
-        weight = scale * weights[neighbor]
-        neighbor_distance = distance_here + weight
-
-        if distance[neighbor] == not_visited:
-            if targets[neighbor]:
-                n_new_locs = nb_trace_back(
-                    distance,
-                    n_new_locs,
-                    new_locs,
-                    not_visited,
-                    origins,
-                    path_handling,
-                    paths,
-                    neighbor,
-                    weights,
-                )
-                targets[neighbor] = 0
-                n_targets_remaining -= 1
-        if neighbor_distance < distance[neighbor]:
-            distance[neighbor] = neighbor_distance
-            if (
-                neighbor[0] > 0
-                and neighbor[0] < n_rows - 1
-                and neighbor[1] > 0
-                and neighbor[1] < n_cols - 1
-            ):
+        if 0 <= neighbor[0] < weights.shape[0] and 0 <= neighbor[1] < weights.shape[1]:
+            weight = scale * weights[neighbor]
+            neighbor_distance = distance_here + weight
+            if distance[neighbor] == not_visited:
+                if targets[neighbor]:
+                    n_new_locs = nb_trace_back(
+                        distance,
+                        n_new_locs,
+                        new_locs,
+                        not_visited,
+                        origins,
+                        path_handling,
+                        paths,
+                        neighbor,
+                        weights,
+                    )
+                    targets[neighbor] = 0
+                    n_targets_remaining -= 1
+            if neighbor_distance < distance[neighbor]:
+                distance[neighbor] = neighbor_distance
                 new_locs[n_new_locs, 0] = distance[neighbor]
                 new_locs[n_new_locs, 1] = neighbor[0]
                 new_locs[n_new_locs, 2] = neighbor[1]

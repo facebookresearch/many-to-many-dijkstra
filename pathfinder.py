@@ -22,7 +22,7 @@ import matplotlib
 
 matplotlib.use("Agg")
 import matplotlib.pyplot as plt
-from numba import autojit
+from numba import jit
 import numpy as np
 
 
@@ -263,7 +263,7 @@ def render(distance, frame_counter, frame_dirname, not_visited, rendering):
     return frame_counter
 
 
-@autojit(nopython=True)
+@jit(nopython=True)
 def nb_trace_back(
     distance,
     n_new_locs,
@@ -340,7 +340,7 @@ def nb_trace_back(
     return n_new_locs
 
 
-@autojit(nopython=True)
+@jit(nopython=True)
 def nb_loop(
     col_here,
     distance,
